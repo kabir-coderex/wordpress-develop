@@ -55,6 +55,20 @@ class WP_Users_List_Table extends WP_List_Table {
 		if ( $this->is_site_users ) {
 			$this->site_id = isset( $_REQUEST['id'] ) ? (int) $_REQUEST['id'] : 0;
 		}
+
+		// Hook into 'admin_enqueue_scripts' to conditionally load the 'users' script on user management pages.
+		// This ensures 'user.js' is available for bulk edit enhancements and localization data, such as the dynamic input name.
+		add_action( 'admin_enqueue_scripts', function( $hook ) {
+			if ( 'users.php' === $hook || 'site-users.php' === $hook ) {
+				wp_enqueue_script(
+					'users',
+					admin_url( 'js/user.js' ),
+					array( 'jquery' ), // Dependency on jQuery, required for existing functionality in user.js.
+					false,             // Version is omitted to use WordPress default or filemtime in development.
+					true               // Load in footer to ensure DOM is ready for script execution.
+				);
+			}
+		} );
 	}
 
 	/**
@@ -300,6 +314,20 @@ class WP_Users_List_Table extends WP_List_Table {
 	protected function extra_tablenav( $which ) {
 		$id        = 'bottom' === $which ? 'new_role2' : 'new_role';
 		$button_id = 'bottom' === $which ? 'changeit2' : 'changeit';
+
+		// Allow the bulk edit input name (e.g., 'new_role') to be customized via a filter.
+		// This supports flexibility in bulk action forms, addressing ticket #63005.
+		$bulk_input_name = apply_filters( 'bulk_edit_input_name', $id, 'users' );
+
+		// Pass the filtered input name to JavaScript for dynamic validation in user.js.
+		// Uses 'users' script handle, enqueued separately, to ensure compatibility with bulk edit UI.
+		wp_localize_script(
+			'users',
+			'BulkEditSettings',
+			array(
+				'inputName' => $bulk_input_name,
+			)
+		);
 		?>
 	<div class="alignleft actions">
 		<?php if ( current_user_can( 'promote_users' ) && $this->has_items() ) : ?>
@@ -309,7 +337,7 @@ class WP_Users_List_Table extends WP_List_Table {
 			_e( 'Change role to&hellip;' );
 			?>
 		</label>
-		<select name="<?php echo $id; ?>" id="<?php echo $id; ?>">
+		<select name="<?php echo esc_attr( $bulk_input_name ); ?>" id="<?php echo $id; ?>">
 			<option value=""><?php _e( 'Change role to&hellip;' ); ?></option>
 			<?php wp_dropdown_roles(); ?>
 			<option value="none"><?php _e( '&mdash; No role for this site &mdash;' ); ?></option>
