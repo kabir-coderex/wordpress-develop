@@ -40,7 +40,7 @@ function check_comment( $author, $email, $url, $comment, $user_ip, $user_agent, 
 	global $wpdb;
 
 	// If manual moderation is enabled, skip all checks and return false.
-	if ( 1 == get_option( 'comment_moderation' ) ) {
+	if ( '1' === get_option( 'comment_moderation' ) ) {
 		return false;
 	}
 
@@ -126,18 +126,38 @@ function check_comment( $author, $email, $url, $comment, $user_ip, $user_agent, 
 	 * as well as whether there are any moderation keywords (if set) present in the author
 	 * email address. If both checks pass, return true. Otherwise, return false.
 	 */
-	if ( 1 == get_option( 'comment_previously_approved' ) ) {
+	if ( '1' === get_option( 'comment_previously_approved' ) ) {
 		if ( 'trackback' !== $comment_type && 'pingback' !== $comment_type && '' !== $author && '' !== $email ) {
 			$comment_user = get_user_by( 'email', wp_unslash( $email ) );
 			if ( ! empty( $comment_user->ID ) ) {
-				$ok_to_comment = $wpdb->get_var( $wpdb->prepare( "SELECT comment_approved FROM $wpdb->comments WHERE user_id = %d AND comment_approved = '1' LIMIT 1", $comment_user->ID ) );
+				$ok_to_comment = $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT comment_approved
+						FROM $wpdb->comments
+						WHERE user_id = %d
+						AND comment_approved = '1'
+						LIMIT 1",
+						$comment_user->ID
+					)
+				);
 			} else {
 				// expected_slashed ($author, $email)
-				$ok_to_comment = $wpdb->get_var( $wpdb->prepare( "SELECT comment_approved FROM $wpdb->comments WHERE comment_author = %s AND comment_author_email = %s and comment_approved = '1' LIMIT 1", $author, $email ) );
+				$ok_to_comment = $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT comment_approved
+						FROM $wpdb->comments
+						WHERE comment_author = %s
+						AND comment_author_email = %s
+						AND comment_approved = '1'
+						LIMIT 1",
+						$author,
+						$email
+					)
+				);
 			}
-			if ( ( 1 == $ok_to_comment ) &&
-				( empty( $mod_keys ) || ! str_contains( $email, $mod_keys ) ) ) {
-					return true;
+
+			if ( '1' === $ok_to_comment && ( empty( $mod_keys ) || ! str_contains( $email, $mod_keys ) ) ) {
+				return true;
 			} else {
 				return false;
 			}
@@ -1260,14 +1280,14 @@ function wp_check_comment_data_max_lengths( $comment_data ) {
  *
  * @param array $comment_data Array of arguments for inserting a comment.
  * @return int|string|WP_Error The approval status on success (0|1|'spam'|'trash'),
-  *                            WP_Error otherwise.
+ *                             WP_Error otherwise.
  */
 function wp_check_comment_data( $comment_data ) {
 	global $wpdb;
 
 	if ( ! empty( $comment_data['user_id'] ) ) {
 		$user        = get_userdata( $comment_data['user_id'] );
-		$post_author = $wpdb->get_var(
+		$post_author = (int) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT post_author FROM $wpdb->posts WHERE ID = %d LIMIT 1",
 				$comment_data['comment_post_ID']
@@ -1275,7 +1295,7 @@ function wp_check_comment_data( $comment_data ) {
 		);
 	}
 
-	if ( isset( $user ) && ( $comment_data['user_id'] == $post_author || $user->has_cap( 'moderate_comments' ) ) ) {
+	if ( isset( $user ) && ( $comment_data['user_id'] === $post_author || $user->has_cap( 'moderate_comments' ) ) ) {
 		// The author and the admins get respect.
 		$approved = 1;
 	} else {
@@ -1325,13 +1345,13 @@ function wp_check_comment_data( $comment_data ) {
  *
  * @since 5.5.0
  *
- * @param string $author The author of the comment
- * @param string $email The email of the comment
- * @param string $url The url used in the comment
- * @param string $comment The comment content
- * @param string $user_ip The comment author's IP address
- * @param string $user_agent The author's browser user agent
- * @return bool True if comment contains disallowed content, false if comment does not
+ * @param string $author     The author of the comment.
+ * @param string $email      The email of the comment.
+ * @param string $url        The url used in the comment.
+ * @param string $comment    The comment content.
+ * @param string $user_ip    The comment author's IP address.
+ * @param string $user_agent The author's browser user agent.
+ * @return bool True if the comment contains disallowed content, false otherwise.
  */
 function wp_check_comment_disallowed_list( $author, $email, $url, $comment, $user_ip, $user_agent ) {
 	/**
@@ -1815,17 +1835,18 @@ function wp_transition_comment_status( $new_status, $old_status, $comment ) {
 	}
 
 	// Call the hooks.
-	if ( $new_status != $old_status ) {
+	if ( $new_status !== $old_status ) {
 		/**
 		 * Fires when the comment status is in transition.
 		 *
 		 * @since 2.7.0
 		 *
-		 * @param int|string $new_status The new comment status.
-		 * @param int|string $old_status The old comment status.
+		 * @param string     $new_status The new comment status.
+		 * @param string     $old_status The old comment status.
 		 * @param WP_Comment $comment    Comment object.
 		 */
 		do_action( 'transition_comment_status', $new_status, $old_status, $comment );
+
 		/**
 		 * Fires when the comment status is in transition from one specific status to another.
 		 *
@@ -2070,7 +2091,7 @@ function wp_insert_comment( $commentdata ) {
 
 	$id = (int) $wpdb->insert_id;
 
-	if ( 1 == $comment_approved ) {
+	if ( 1 === (int) $comment_approved ) {
 		wp_update_comment_count( $comment_post_id );
 
 		$data = array();
@@ -3206,7 +3227,7 @@ function pingback( $content, $post ) {
  * @return mixed Empty string if blog is not public, returns $sites, if site is public.
  */
 function privacy_ping_filter( $sites ) {
-	if ( '0' != get_option( 'blog_public' ) ) {
+	if ( '0' !== get_option( 'blog_public' ) ) {
 		return $sites;
 	} else {
 		return '';
