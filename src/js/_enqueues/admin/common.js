@@ -1327,8 +1327,8 @@ $( function() {
 
 		// Observe submissions from posts lists for 'bulk_action' or users lists for 'new_role'.
 		var bulkFieldRelations = {
-			'bulk_action' : 'action',
-			'changeit' : 'new_role'
+			'bulk_action' : window.bulkActionObserverIds.bulk_action,
+			'changeit' : window.bulkActionObserverIds.changeit
 		};
 		if ( ! Object.keys( bulkFieldRelations ).includes( submitterName ) ) {
 			return;
@@ -1350,9 +1350,11 @@ $( function() {
 		event.stopPropagation();
 		$( 'html, body' ).animate( { scrollTop: 0 } );
 
-		var errorMessage = __( 'Please select at least one item to perform this action on.' );
+		var errorMessage = value !== '-1' ?
+			__( 'Please select at least one item to perform this action on.' ) :
+			__( 'Please select a bulk action to perform.' );
 		addAdminNotice( {
-			id: 'no-items-selected',
+			id: value !== '-1' ? 'no-items-selected' : 'no-bulk-action-selected',
 			type: 'error',
 			message: errorMessage,
 			dismissible: true,
